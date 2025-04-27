@@ -12,15 +12,22 @@ const pool = mysql.createPool({
     port: process.env.DB_PORT,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-
+    database: process.env.DB_NAME
 });
 
-// Test database connection on startup
+// Test database connection and table existence
 async function testDbConnection() {
     try {
         const connection = await pool.getConnection();
         console.log('MySQL connection successful');
+        const [tables] = await connection.query("SHOW TABLES LIKE 'water_usage'");
+        if (tables.length === 0) {
+            console.warn('Warning: usage table does not exist');
+        } else {
+            console.log('usage table exists');
+            const [columns] = await connection.query("DESCRIBE water_usage");
+            console.log('usage table columns:', columns.map(c => c.Field));
+        }
         connection.release();
     } catch (error) {
         console.error('MySQL connection failed:', error.message);
