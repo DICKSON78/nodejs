@@ -13,23 +13,39 @@ const pool = mysql.createPool({
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
+
 });
+
+// Test database connection on startup
+async function testDbConnection() {
+    try {
+        const connection = await pool.getConnection();
+        console.log('MySQL connection successful');
+        connection.release();
+    } catch (error) {
+        console.error('MySQL connection failed:', error.message);
+    }
+}
+testDbConnection();
 
 app.post('/api/login', async (req, res) => {
     try {
         const { meter_number, password } = req.body;
+        console.log(`Login attempt for meter_number: ${meter_number}`);
         const [rows] = await pool.query(
             'SELECT * FROM users WHERE meter_number = ? AND password = ?',
             [meter_number, password]
         );
         if (rows.length > 0) {
+            console.log(`Login successful for ${meter_number}`);
             res.json({ success: true, meter_number });
         } else {
+            console.log(`Login failed for ${meter_number}: Invalid credentials`);
             res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
     } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ success: false, message: 'Server error during login' });
+        console.error('Login error:', error.message);
+        res.status(500).json({ success: false, message: 'Server error during login', details: error.message });
     }
 });
 
@@ -50,7 +66,7 @@ app.get('/api/water-usage/daily/:meter_number', async (req, res) => {
             res.json(rows);
         }
     } catch (error) {
-        console.error('Daily usage error:', error);
+        console.error(`Daily usage error for ${req.params.meter_number}:`, error.message);
         res.status(500).json({ error: 'Server error fetching daily usage', details: error.message });
     }
 });
