@@ -62,7 +62,7 @@ app.get('/api/water-usage/daily/:meter_number', async (req, res) => {
         console.log(`Fetching daily usage for meter_number: ${meter_number}`);
         const [rows] = await pool.query(
             'SELECT meter_number, liters, DATE(timestamp) AS date, liters * 1000 AS bill ' +
-            'FROM usage WHERE meter_number = ? AND timestamp >= DATE_SUB(CURDATE(), INTERVAL 31 DAY)',
+            'FROM water_usage WHERE meter_number = ? AND timestamp >= DATE_SUB(CURDATE(), INTERVAL 31 DAY)',
             [meter_number]
         );
         if (rows.length === 0) {
