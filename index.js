@@ -23,6 +23,25 @@ db.connect((err) => {
     console.log('Connected to Database successfully');
 });
 
+// POST endpoint for user login
+app.post('/api/login', (req, res) => {
+    const { meter_number, password } = req.body;
+    if (!meter_number || !password) {
+        return res.status(400).send('Missing meter_number or password');
+    }
+    const query = 'SELECT * FROM users WHERE meter_number = ? AND password = ?';
+    db.query(query, [meter_number, password], (err, results) => {
+        if (err) {
+            console.error('Database error:', err.message);
+            return res.status(500).send('Database error');
+        }
+        if (results.length === 0) {
+            return res.status(401).send('Invalid credentials');
+        }
+        res.json({ message: 'Login successful', meter_number: results[0].meter_number });
+    });
+});
+
 // POST endpoint to receive data from GSM module
 app.post('/api/water-usage', (req, res) => {
     const { meter_number, liters } = req.body;
