@@ -20,10 +20,15 @@ const dbConfig = {
 // Initialize MySQL pool
 const pool = mysql.createPool(dbConfig);
 
+console.log('Attempting to connect to MySQL with config:', dbConfig);
+
 // Initialize database tables
 (async () => {
+  let connection;
   try {
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
+    console.log('Acquired database connection');
+
     // Create users table
     await connection.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -31,6 +36,7 @@ const pool = mysql.createPool(dbConfig);
         password_hash VARCHAR(255) NOT NULL
       );
     `);
+    console.log('Created users table');
 
     // Create valve_states table
     await connection.query(`
@@ -40,6 +46,7 @@ const pool = mysql.createPool(dbConfig);
         CHECK (state IN ('open', 'close'))
       );
     `);
+    console.log('Created valve_states table');
 
     // Create water_usage table
     await connection.query(`
@@ -51,20 +58,13 @@ const pool = mysql.createPool(dbConfig);
         bill FLOAT NOT NULL
       );
     `);
-
-    // Insert a sample user if not exists (for testing)
-    const sampleMeterNumber = 'MTR001';
-    const samplePassword = 'password123';
-    const hashedPassword = await bcrypt.hash(samplePassword, 10);
-    await connection.query(
-      `INSERT IGNORE INTO users (meter_number, password_hash) VALUES (?, ?)`,
-      [sampleMeterNumber, hashedPassword]
-    );
+    console.log('Created water_usage table');
 
     connection.release();
-    console.log('Database initialized');
+    console.log('Database initialized successfully');
   } catch (err) {
-    console.error('Error initializing database:', err);
+    console.error('Database initialization error:', err);
+    if (connection) connection.release();
   }
 })();
 
@@ -74,19 +74,24 @@ const calculateBill = (liters) => (liters / 1000.0) * 1000.0;
 // POST /api/login - Authenticate user
 app.post('/api/login', async (req, res) => {
   const { meter_number, password } = req.body;
+  console.log('Login attempt for meter_number:', meter_number);
 
   if (!meter_number || !password) {
+    console.log('Missing meter_number or password');
     return res.status(400).json({ success: false, message: 'Missing meter number or password' });
   }
 
   try {
     const [rows] = await pool.query('SELECT password_hash FROM users WHERE meter_number = ?', [meter_number]);
+    console.log('Query result rows:', rows.length);
     if (rows.length === 0) {
+      console.log('No user found for meter_number:', meter_number);
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
     const passwordHash = rows[0].password_hash;
     const isMatch = await bcrypt.compare(password, passwordHash);
+    console.log('Password match result:', isMatch);
 
     if (isMatch) {
       res.json({ success: true, message: 'Login successful' });
@@ -104,7 +109,7 @@ app.get('/api/valve/control/:meter_number', async (req, res) => {
   const meterNumber = req.params.meter_number;
   try {
     const [rows] = await pool.query('SELECT state FROM valve_states WHERE meter_number = ?', [meterNumber]);
-    const state = rows[0]?.state || 'close'; // Default to closed
+    const state = rows[0]?.state || 'close';
     res.json({ success: true, message: `Valve is ${state}`, state });
   } catch (err) {
     console.error(err);
