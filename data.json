@@ -1,0 +1,34 @@
+{
+    "users": {
+      "MTR001": {
+        "meter_number": "MTR001",
+        "password_hash": "pass123" 
+      }
+    },
+    "valve_states": {
+      "MTR001": {
+        "state": "close"
+      }
+    },
+    "water_usage": {
+      "MTR001": {
+        "20250506": {
+          "-Nabcdefghijklmnopqrstuvwxyz12": {
+            "liters": 5.0,
+            "date": 1714963200000,
+            "bill": 5.0
+          },
+          "-Nabcdefghijklmn3456": {
+            "liters": 7.5,
+            "date": 1714966800000,
+            "bill": 7.5
+          },
+          "-Npqrstuvwxyz7890": {
+            "liters": 3.2,
+            "date": 1714970400000,
+            "bill": 3.2
+          }
+        }
+      }
+    }
+  }
