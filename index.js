@@ -7,7 +7,13 @@ const admin = require('firebase-admin');
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+
+// Configure CORS with dynamic origin
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || '*',
+  optionsSuccessStatus: 200,
+};
+app.use(cors(corsOptions));
 
 // Initialize Firebase with environment variables
 if (!process.env.FIREBASE_SERVICE_ACCOUNT || !process.env.FIREBASE_DATABASE_URL) {
@@ -41,7 +47,7 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Login endpoint
+// Login endpoint (validate meter_number and password from Firebase)
 app.post('/api/login', async (req, res) => {
   const { meter_number, password } = req.body;
 
@@ -57,12 +63,15 @@ app.post('/api/login', async (req, res) => {
     }
 
     const user = snapshot.val();
+    if (!user.password_hash) {
+      return res.status(500).json({ success: false, message: 'User data corrupted' });
+    }
+
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) {
       return res.status(401).json({ success: false, message: 'Invalid password' });
     }
 
-    // Generate JWT
     const token = jwt.sign({ meter_number }, process.env.JWT_SECRET || 'default-secret', { expiresIn: '1h' });
     res.status(200).json({ success: true, message: 'Login successful', token });
   } catch (error) {
@@ -71,15 +80,18 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Protected endpoint to get water usage
+// Prupdaotected endpoint to get daily water usage from Firebase (populated by Arduino)
 app.get('/api/water-usage', authenticateToken, async (req, res) => {
   const { meter_number } = req.user;
 
   try {
     const usageRef = db.ref(`water_usage/${meter_number}`);
     const snapshot = await usageRef.once('value');
-    const waterUsage = snapshot.val() || {};
+    if (!snapshot.exists()) {
+      return res.status(404).json({ success: false, message: 'No water usage data found' });
+    }
 
+    const waterUsage = snapshot.val();
     res.status(200).json({ success: true, data: waterUsage });
   } catch (error) {
     console.error('Water usage fetch error:', error);
