@@ -8,6 +8,9 @@ const admin = require('firebase-admin');
 const app = express();
 app.use(express.json());
 
+// Log server time at startup
+console.log('Server time at startup:', new Date().toISOString());
+
 // Configure CORS with dynamic origin
 const corsOptions = {
   origin: process.env.CORS_ORIGIN || '*',
