@@ -9,13 +9,16 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-var admin = require("firebase-admin");
+// Initialize Firebase with environment variables
+if (!process.env.FIREBASE_SERVICE_ACCOUNT || !process.env.FIREBASE_DATABASE_URL) {
+  console.error('Missing FIREBASE_SERVICE_ACCOUNT or FIREBASE_DATABASE_URL in .env');
+  process.exit(1);
+}
 
-var serviceAccount = require("https://firebase-adminsdk-fbsvc@water-monitoring-ab4d9.iam.gserviceaccount.com");
-
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://water-monitoring-ab4d9-default-rtdb.firebaseio.com"
+  databaseURL: process.env.FIREBASE_DATABASE_URL,
 });
 
 const db = admin.database();
@@ -29,7 +32,7 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ success: false, message: 'Access token required' });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+  jwt.verify(token, process.env.JWT_SECRET || 'default-secret', (err, decoded) => {
     if (err) {
       return res.status(403).json({ success: false, message: 'Invalid or expired token' });
     }
@@ -60,7 +63,7 @@ app.post('/api/login', async (req, res) => {
     }
 
     // Generate JWT
-    const token = jwt.sign({ meter_number }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ meter_number }, process.env.JWT_SECRET || 'default-secret', { expiresIn: '1h' });
     res.status(200).json({ success: true, message: 'Login successful', token });
   } catch (error) {
     console.error('Login error:', error);
