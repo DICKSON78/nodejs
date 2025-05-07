@@ -8,7 +8,7 @@ const port = process.env.PORT || 3000;
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://water-monitoring-ab4d9-default-rtdb.firebaseio.com/'
+  databaseURL: 'https://water-monitoring-ab4d9-default-rtdb.firebaseio.com'
 });
 
 const db = admin.database();

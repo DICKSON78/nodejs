@@ -1,34 +1,97 @@
 {
-    "users": {
-      "MTR001": {
-        "meter_number": "MTR001",
-        "password_hash": "pass123" 
+  "users": {
+    "MTR001": {
+      "meter_number": "MTR001",
+      "password_hash": "$2b$10$X1y2z3w4v5u6t7s8r9q0p1.ABCDEFGHIJKLMNOPQRSTUVWXYZ123456"
+    },
+    "MTR002": {
+      "meter_number": "MTR002",
+      "password_hash": "$2b$10$a2b3c4d5e6f7g8h9i0j1k2.LMNOPQRSTUVWXYZ1234567890ABCDEF"
+    },
+    "MTR003": {
+      "meter_number": "MTR003",
+      "password_hash": "$2b$10$m3n4o5p6q7r8s9t0u1v2w3.XYZ1234567890ABCDEFGHIJKLMNOPQRSTUV"
+    },
+    "MTR004": {
+      "meter_number": "MTR004",
+      "password_hash": "$2b$10$y4z5a6b7c8d9e0f1g2h3i4.4567890ABCDEFGHIJKLMNOPQRSTUVWXYZ123"
+    }
+  },
+  "valve_states": {
+    "MTR001": {
+      "state": "close"
+    },
+    "MTR002": {
+      "state": "close"
+    },
+    "MTR003": {
+      "state": "close"
+    },
+    "MTR004": {
+      "state": "close"
+    }
+  },
+  "water_usage": {
+    "MTR001": {
+      "20250506": {
+        "-Nabcdefghijklmnopqrstuvwxyz12": {
+          "liters": 5.0,
+          "date": 1714963200000,
+          "bill": 5.0
+        },
+        "-Nabcdefghijklmn3456": {
+          "liters": 7.5,
+          "date": 1714966800000,
+          "bill": 7.5
+        },
+        "-Npqrstuvwxyz7890": {
+          "liters": 3.2,
+          "date": 1714970400000,
+          "bill": 3.2
+        }
       }
     },
-    "valve_states": {
-      "MTR001": {
-        "state": "close"
+    "MTR002": {
+      "20250506": {
+        "-Nxyzabcdefghijklm12": {
+          "liters": 4.8,
+          "date": 1714963200000,
+          "bill": 4.8
+        },
+        "-Nklmnopqrstuvwx3456": {
+          "liters": 6.0,
+          "date": 1714966800000,
+          "bill": 6.0
+        }
       }
     },
-    "water_usage": {
-      "MTR001": {
-        "20250506": {
-          "-Nabcdefghijklmnopqrstuvwxyz12": {
-            "liters": 5.0,
-            "date": 1714963200000,
-            "bill": 5.0
-          },
-          "-Nabcdefghijklmn3456": {
-            "liters": 7.5,
-            "date": 1714966800000,
-            "bill": 7.5
-          },
-          "-Npqrstuvwxyz7890": {
-            "liters": 3.2,
-            "date": 1714970400000,
-            "bill": 3.2
-          }
+    "MTR003": {
+      "20250506": {
+        "-Nrstuvwxyzabcdefg12": {
+          "liters": 2.5,
+          "date": 1714963200000,
+          "bill": 2.5
+        },
+        "-Nijklmnopqrs7890": {
+          "liters": 8.0,
+          "date": 1714970400000,
+          "bill": 8.0
+        }
+      }
+    },
+    "MTR004": {
+      "20250506": {
+        "-Nuvwxyzabcdefghij12": {
+          "liters": 3.0,
+          "date": 1714963200000,
+          "bill": 3.0
+        },
+        "-Nstuvwxyzklmno3456": {
+          "liters": 5.5,
+          "date": 1714966800000,
+          "bill": 5.5
         }
       }
     }
   }
+}
