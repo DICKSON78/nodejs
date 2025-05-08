@@ -27,22 +27,24 @@ const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader?.split(' ')[1];
   
-  if (!token) return res.sendStatus(401);
+  if (!token) return res.status(401).json({ error: 'Access token required' });
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.sendStatus(403);
-    req.user = user;
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) return res.status(403).json({ error: 'Invalid or expired token' });
+    req.user = decoded;
     next();
   });
 };
 
 // Routes
+
+// Login
 app.post('/api/login', async (req, res) => {
   try {
     const { meter_number, password } = req.body;
     
     if (!meter_number || !password) {
-      return res.status(400).json({ error: 'Missing credentials' });
+      return res.status(400).json({ error: 'Meter number and password are required' });
     }
 
     const userSnapshot = await db.ref(`users/${meter_number}`).once('value');
@@ -53,7 +55,6 @@ app.post('/api/login', async (req, res) => {
 
     const user = userSnapshot.val();
 
-    // Plain password comparison
     if (password !== user.password) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -65,6 +66,7 @@ app.post('/api/login', async (req, res) => {
     );
 
     res.json({ 
+      success: true,
       token,
       expiresIn: 3600,
       meter_number
@@ -76,17 +78,58 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Protected Route Example
+// Get Water Usage (All data for authenticated user)
 app.get('/api/water-usage', authenticateToken, async (req, res) => {
   try {
     const { meter_number } = req.user;
+    
     const snapshot = await db.ref(`water_usage/${meter_number}`).once('value');
     
+    if (!snapshot.exists()) {
+      return res.status(404).json({ error: 'No water usage data found' });
+    }
+
     res.json({
-      data: snapshot.val() || {},
-      meter_number
+      success: true,
+      meter_number,
+      data: snapshot.val()
     });
+
   } catch (error) {
+    console.error('Water usage error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get Water Usage by Specific Date (YYYYMMDD format)
+app.get('/api/water-usage/:date', authenticateToken, async (req, res) => {
+  try {
+    const { meter_number } = req.user;
+    const { date } = req.params;
+    
+    // Validate date format (YYYYMMDD)
+    if (!/^\d{8}$/.test(date)) {
+      return res.status(400).json({ error: 'Invalid date format. Use YYYYMMDD' });
+    }
+
+    const snapshot = await db.ref(`water_usage/${meter_number}/${date}`).once('value');
+    
+    if (!snapshot.exists()) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'No data available for this date' 
+      });
+    }
+
+    res.json({
+      success: true,
+      meter_number,
+      date,
+      data: snapshot.val()
+    });
+
+  } catch (error) {
+    console.error('Water usage by date error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -95,7 +138,7 @@ app.get('/api/water-usage', authenticateToken, async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log('WARNING: Using plain text passwords - Not secure for production!');
+  console.log('WARNING: Using plain text passwords - For testing only!');
 });
 
 // Error Handling
