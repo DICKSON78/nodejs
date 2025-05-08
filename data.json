@@ -2,33 +2,57 @@
   "users": {
     "MTR001": {
       "meter_number": "MTR001",
-      "password": "pass123"
+      "password": "pass123",
+      "role": "user",
+      "created_at": 1715000000000
     },
     "MTR002": {
       "meter_number": "MTR002",
-      "password": "pass123"
+      "password": "pass123",
+      "role": "user",
+      "created_at": 1715000001000
     },
     "MTR003": {
       "meter_number": "MTR003",
-      "password": "pass123"
+      "password": "pass123",
+      "role": "user",
+      "created_at": 1715000002000
     },
     "MTR004": {
       "meter_number": "MTR004",
-      "password": "pass123"
+      "password": "pass123",
+      "role": "admin",
+      "created_at": 1715000003000
     }
   },
   "valve_states": {
     "MTR001": {
-      "state": "close"
+      "state": "close",
+      "last_updated": 1715000000000,
+      "controlled_by": "MTR001",
+      "last_command_status": "success",
+      "hardware_ack": true
     },
     "MTR002": {
-      "state": "close"
+      "state": "close",
+      "last_updated": 1715000001000,
+      "controlled_by": "system",
+      "last_command_status": "pending",
+      "hardware_ack": false
     },
     "MTR003": {
-      "state": "close"
+      "state": "close",
+      "last_updated": 1715000002000,
+      "controlled_by": "MTR004",
+      "last_command_status": "success",
+      "hardware_ack": true
     },
     "MTR004": {
-      "state": "close"
+      "state": "open",
+      "last_updated": 1715000003000,
+      "controlled_by": "MTR004",
+      "last_command_status": "success",
+      "hardware_ack": true
     }
   },
   "water_usage": {
@@ -37,17 +61,23 @@
         "-Nabcdefghijklmn3456": {
           "bill": 7.5,
           "date": 1714966800000,
-          "liters": 7.5
+          "liters": 7.5,
+          "valve_state": "open",
+          "duration_seconds": 120
         },
         "-Nabcdefghijklmnopqrstuvwxyz12": {
           "bill": 5,
           "date": 1714963200000,
-          "liters": 5
+          "liters": 5,
+          "valve_state": "open",
+          "duration_seconds": 90
         },
         "-Npqrstuvwxyz7890": {
           "bill": 3.2,
           "date": 1714970400000,
-          "liters": 3.2
+          "liters": 3.2,
+          "valve_state": "open",
+          "duration_seconds": 60
         }
       }
     },
@@ -56,12 +86,16 @@
         "-Nklmnopqrstuvwx3456": {
           "bill": 6,
           "date": 1714966800000,
-          "liters": 6
+          "liters": 6,
+          "valve_state": "open",
+          "duration_seconds": 150
         },
         "-Nxyzabcdefghijklm12": {
           "bill": 4.8,
           "date": 1714963200000,
-          "liters": 4.8
+          "liters": 4.8,
+          "valve_state": "open",
+          "duration_seconds": 110
         }
       }
     },
@@ -70,12 +104,16 @@
         "-Nijklmnopqrs7890": {
           "bill": 8,
           "date": 1714970400000,
-          "liters": 8
+          "liters": 8,
+          "valve_state": "open",
+          "duration_seconds": 180
         },
         "-Nrstuvwxyzabcdefg12": {
           "bill": 2.5,
           "date": 1714963200000,
-          "liters": 2.5
+          "liters": 2.5,
+          "valve_state": "open",
+          "duration_seconds": 45
         }
       }
     },
@@ -84,14 +122,42 @@
         "-Nstuvwxyzklmno3456": {
           "bill": 5.5,
           "date": 1714966800000,
-          "liters": 5.5
+          "liters": 5.5,
+          "valve_state": "open",
+          "duration_seconds": 130
         },
         "-Nuvwxyzabcdefghij12": {
           "bill": 3,
           "date": 1714963200000,
-          "liters": 3
+          "liters": 3,
+          "valve_state": "open",
+          "duration_seconds": 75
         }
       }
     }
+  },
+  "valve_logs": {
+    "MTR001": {
+      "-Nlog123456789": {
+        "timestamp": 1715000000000,
+        "action": "open",
+        "initiated_by": "MTR001",
+        "status": "completed",
+        "hardware_response": "acknowledged"
+      },
+      "-Nlog987654321": {
+        "timestamp": 1715000005000,
+        "action": "close",
+        "initiated_by": "system",
+        "status": "completed",
+        "hardware_response": "acknowledged"
+      }
+    }
+  },
+  "system_settings": {
+    "water_price_per_liter": 0.02,
+    "valve_response_timeout": 30,
+    "max_daily_usage_limit": 1000,
+    "valve_auto_close_minutes": 120
   }
 }

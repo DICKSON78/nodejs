@@ -134,6 +134,77 @@ app.get('/api/water-usage/:date', authenticateToken, async (req, res) => {
   }
 });
 
+// Valve Control Endpoint
+app.post('/api/control-valve', authenticateToken, async (req, res) => {
+  try {
+    const { meter_number } = req.user;
+    const { action } = req.body;
+
+    if (!action || !['open', 'close'].includes(action)) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Invalid action. Use "open" or "close"' 
+      });
+    }
+
+    // Update valve state in Firebase
+    const valveRef = db.ref(`valve_states/${meter_number}`);
+    await valveRef.update({ 
+      state: action,
+      last_updated: Date.now(),
+      controlled_by: meter_number
+    });
+
+    // Here you would typically also:
+    // 1. Send command to Arduino via Firebase or direct HTTP
+    // 2. Log the valve operation
+    // 3. Verify the operation was successful
+
+    res.json({
+      success: true,
+      message: `Valve ${action} command sent successfully`,
+      meter_number,
+      action
+    });
+
+  } catch (error) {
+    console.error('Valve control error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to control valve' 
+    });
+  }
+});
+
+// Get Current Valve State
+app.get('/api/valve-state', authenticateToken, async (req, res) => {
+  try {
+    const { meter_number } = req.user;
+    const snapshot = await db.ref(`valve_states/${meter_number}`).once('value');
+    
+    if (!snapshot.exists()) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'No valve state found for this meter' 
+      });
+    }
+
+    res.json({
+      success: true,
+      meter_number,
+      state: snapshot.val().state,
+      last_updated: snapshot.val().last_updated
+    });
+
+  } catch (error) {
+    console.error('Valve state error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to get valve state' 
+    });
+  }
+});
+
 // Server Startup
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
