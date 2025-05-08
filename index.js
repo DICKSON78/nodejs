@@ -8,7 +8,7 @@ const admin = require('firebase-admin');
 const app = express();
 app.use(express.json());
 
-// Log server time at startup
+// Log server time at startup (to debug JWT time sync issues)
 console.log('Server time at startup:', new Date().toISOString());
 
 // Configure CORS with dynamic origin
@@ -25,6 +25,7 @@ if (!process.env.FIREBASE_SERVICE_ACCOUNT || !process.env.FIREBASE_DATABASE_URL)
 }
 
 console.log('FIREBASE_SERVICE_ACCOUNT raw:', process.env.FIREBASE_SERVICE_ACCOUNT.substring(0, 100) + '...');
+
 let serviceAccount;
 try {
   serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
