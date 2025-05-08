@@ -38,24 +38,46 @@ const initializeFirebase = () => {
 
   let serviceAccount;
   try {
-    serviceAccount = JSON.parse(
-      process.env.FIREBASE_SERVICE_ACCOUNT.replace(/\\n/g, '\n')
-    );
+    // First, try parsing the raw JSON
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } catch (firstError) {
+    console.log('First parse attempt failed, trying with cleanup...');
     
-    if (!serviceAccount.private_key || !serviceAccount.private_key.includes('BEGIN PRIVATE KEY')) {
-      throw new Error('Invalid private key format');
+    try {
+      // Clean the JSON string by:
+      // 1. Removing any control characters
+      // 2. Properly handling escaped quotes and newlines
+      const cleanedJson = process.env.FIREBASE_SERVICE_ACCOUNT
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control chars
+        .replace(/\\"/g, '"') // Unescape quotes
+        .replace(/\\n/g, '\n'); // Convert escaped newlines to actual newlines
+
+      serviceAccount = JSON.parse(cleanedJson);
+    } catch (cleanError) {
+      console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT after cleanup:', {
+        error: cleanError.message,
+        sample: process.env.FIREBASE_SERVICE_ACCOUNT.substring(150, 200),
+        fullError: cleanError
+      });
+      process.exit(1);
     }
-  } catch (error) {
-    console.error('Firebase Service Account Error:', {
-      message: error.message,
-      sampleKey: process.env.FIREBASE_SERVICE_ACCOUNT?.substring(0, 50) + '...'
+  }
+
+  // Verify the private key structure
+  if (!serviceAccount.private_key || !serviceAccount.private_key.includes('BEGIN PRIVATE KEY')) {
+    console.error('Invalid private key format:', {
+      privateKeyExists: !!serviceAccount.private_key,
+      startsCorrectly: serviceAccount.private_key?.startsWith('-----BEGIN PRIVATE KEY-----')
     });
     process.exit(1);
   }
 
   try {
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
+      credential: admin.credential.cert({
+        ...serviceAccount,
+        private_key: serviceAccount.private_key.replace(/\\n/g, '\n')
+      }),
       databaseURL: process.env.FIREBASE_DATABASE_URL
     });
     
