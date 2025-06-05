@@ -26,14 +26,43 @@ app.use(cors({
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader?.split(' ')[1];
-  
-  if (!token) return res.status(401).json({ error: 'Access token required' });
+
+  if (!token) return res.status(401).json({ success: false, error: 'Access token required' });
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) return res.status(403).json({ error: 'Invalid or expired token' });
+    if (err) return res.status(403).json({ success: false, error: 'Invalid or expired token' });
     req.user = decoded;
     next();
   });
+};
+
+// Auto-close valve after specified minutes
+const scheduleValveAutoClose = async (meter_number, minutes) => {
+  setTimeout(async () => {
+    const valveRef = db.ref(`valve_states/${meter_number}`);
+    const snapshot = await valveRef.once('value');
+    if (snapshot.exists() && snapshot.val().state === 'open') {
+      await valveRef.update({
+        state: 'close',
+        last_updated: Date.now(),
+        controlled_by: 'system',
+        last_command_status: 'pending',
+        hardware_ack: false
+      });
+
+      // Log the auto-close action
+      const logRef = db.ref(`valve_logs/${meter_number}`).push();
+      await logRef.set({
+        action: 'close',
+        initiated_by: 'system',
+        status: 'completed',
+        hardware_response: 'pending',
+        timestamp: Date.now()
+      });
+
+      console.log(`Auto-closed valve for ${meter_number} after ${minutes} minutes`);
+    }
+  }, minutes * 60 * 1000);
 };
 
 // Routes
@@ -42,30 +71,30 @@ const authenticateToken = (req, res, next) => {
 app.post('/api/login', async (req, res) => {
   try {
     const { meter_number, password } = req.body;
-    
+
     if (!meter_number || !password) {
-      return res.status(400).json({ error: 'Meter number and password are required' });
+      return res.status(400).json({ success: false, error: 'Meter number and password are required' });
     }
 
     const userSnapshot = await db.ref(`users/${meter_number}`).once('value');
-    
+
     if (!userSnapshot.exists()) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ success: false, error: 'Invalid credentials' });
     }
 
     const user = userSnapshot.val();
 
     if (password !== user.password) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ success: false, error: 'Invalid credentials' });
     }
 
     const token = jwt.sign(
-      { meter_number }, 
-      process.env.JWT_SECRET, 
+      { meter_number },
+      process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
-    res.json({ 
+    res.json({
       success: true,
       token,
       expiresIn: 3600,
@@ -73,20 +102,20 @@ app.post('/api/login', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Login error:', error.stack);
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
-// Get Water Usage (All data for authenticated user)
+// Get Water Usage
 app.get('/api/water-usage', authenticateToken, async (req, res) => {
   try {
     const { meter_number } = req.user;
-    
+
     const snapshot = await db.ref(`water_usage/${meter_number}`).once('value');
-    
+
     if (!snapshot.exists()) {
-      return res.status(404).json({ error: 'No water usage data found' });
+      return res.status(404).json({ success: false, error: 'No water usage data found' });
     }
 
     res.json({
@@ -96,28 +125,27 @@ app.get('/api/water-usage', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Water usage error:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Water usage error:', error.stack);
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
-// Get Water Usage by Specific Date (YYYYMMDD format)
+// Get Water Usage by Specific Date
 app.get('/api/water-usage/:date', authenticateToken, async (req, res) => {
   try {
     const { meter_number } = req.user;
     const { date } = req.params;
-    
-    // Validate date format (YYYYMMDD)
+
     if (!/^\d{8}$/.test(date)) {
-      return res.status(400).json({ error: 'Invalid date format. Use YYYYMMDD' });
+      return res.status(400).json({ success: false, error: 'Invalid date format. Use YYYYMMDD' });
     }
 
     const snapshot = await db.ref(`water_usage/${meter_number}/${date}`).once('value');
-    
+
     if (!snapshot.exists()) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'No data available for this date' 
+        error: 'No data available for this date'
       });
     }
 
@@ -129,8 +157,8 @@ app.get('/api/water-usage/:date', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Water usage by date error:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Water usage by date error:', error.stack);
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
@@ -141,24 +169,38 @@ app.post('/api/control-valve', authenticateToken, async (req, res) => {
     const { action } = req.body;
 
     if (!action || !['open', 'close'].includes(action)) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Invalid action. Use "open" or "close"' 
+        error: 'Invalid action. Use "open" or "close"'
       });
     }
 
     // Update valve state in Firebase
     const valveRef = db.ref(`valve_states/${meter_number}`);
-    await valveRef.update({ 
+    await valveRef.update({
       state: action,
       last_updated: Date.now(),
-      controlled_by: meter_number
+      controlled_by: meter_number,
+      last_command_status: 'pending',
+      hardware_ack: false
     });
 
-    // Here you would typically also:
-    // 1. Send command to Arduino via Firebase or direct HTTP
-    // 2. Log the valve operation
-    // 3. Verify the operation was successful
+    // Log the action
+    const logRef = db.ref(`valve_logs/${meter_number}`).push();
+    await logRef.set({
+      action: action,
+      initiated_by: meter_number,
+      status: 'completed',
+      hardware_response: 'pending',
+      timestamp: Date.now()
+    });
+
+    // Fetch system settings for auto-close
+    const settingsSnapshot = await db.ref('system_settings').once('value');
+    const settings = settingsSnapshot.val();
+    if (action === 'open' && settings.valve_auto_close_minutes) {
+      scheduleValveAutoClose(meter_number, settings.valve_auto_close_minutes);
+    }
 
     res.json({
       success: true,
@@ -168,10 +210,10 @@ app.post('/api/control-valve', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Valve control error:', error);
-    res.status(500).json({ 
+    console.error('Valve control error:', error.stack);
+    res.status(500).json({
       success: false,
-      error: 'Failed to control valve' 
+      error: 'Failed to control valve'
     });
   }
 });
@@ -181,26 +223,27 @@ app.get('/api/valve-state', authenticateToken, async (req, res) => {
   try {
     const { meter_number } = req.user;
     const snapshot = await db.ref(`valve_states/${meter_number}`).once('value');
-    
+
     if (!snapshot.exists()) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'No valve state found for this meter' 
+        error: 'No valve state found for this meter'
       });
     }
 
+    const valveData = snapshot.val();
     res.json({
       success: true,
       meter_number,
-      state: snapshot.val().state,
-      last_updated: snapshot.val().last_updated
+      state: valveData.state || 'close',
+      last_updated: valveData.last_updated
     });
 
   } catch (error) {
-    console.error('Valve state error:', error);
-    res.status(500).json({ 
+    console.error('Valve state error:', error.stack);
+    res.status(500).json({
       success: false,
-      error: 'Failed to get valve state' 
+      error: 'Failed to get valve state'
     });
   }
 });
@@ -214,5 +257,5 @@ app.listen(PORT, () => {
 
 // Error Handling
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason.stack || reason);
 });
